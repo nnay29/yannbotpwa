@@ -2,23 +2,16 @@ pipeline {
     agent any
     
     stages {
-        stage('Fix Git Permissions') {
-            steps {
-                script {
-                    /
-                    sh '''
-                    git config --global --add safe.directory /var/jenkins_home/workspace/YannBotAI
-                    git config --global --add safe.directory /var/jenkins_home/workspace/YannBotAI@libs
-                    '''
-                }
-            }
-        }
-        
         stage('Extract Git Info') {
             steps {
                 echo '🔍 Extracting Git information...'
                 script {
-                    env.COMMIT_SHA = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    // Try to get commit info, if it fails use fallback
+                    try {
+                        env.COMMIT_SHA = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    } catch (Exception e) {
+                        env.COMMIT_SHA = 'manual-build'
+                    }
                     env.SHORT_SHA = env.COMMIT_SHA.substring(0, 7)
                     env.IMAGE_TAG = "build-${env.BUILD_NUMBER}-${env.SHORT_SHA}"
                     
@@ -31,9 +24,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh """
-                    docker build -t yann177/yann-chatbot:${env.IMAGE_TAG} .
-                    """
+                    sh "docker build -t yann177/yann-chatbot:${env.IMAGE_TAG} ."
                 }
             }
         }
@@ -58,10 +49,7 @@ pipeline {
     
     post {
         success {
-            echo "✅ Success!  ashhhh Image: yann177/yann-chatbot:${env.IMAGE_TAG}"
-        }
-        failure{
-            echo " Le build a ndem fort fort ashhhh"
+            echo "✅ Success! Image: yann177/yann-chatbot:${env.IMAGE_TAG}"
         }
     }
 }
